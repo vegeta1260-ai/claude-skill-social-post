@@ -1,0 +1,38 @@
+name: 同步上游 main
+
+# 這個 fork 是**純鏡像**：main 永遠等於 Hao0321/claude-skill-social-post 的 main，
+# 不放任何自己的改動，所以 gh repo sync 永遠是 fast-forward、永遠不會衝突。
+#
+# ⚠️ 為什麼 workflow 放在 automation 分支而不是 main：
+#    放在 main 就等於 main 多了一個本地 commit，fork 一旦「分叉」，
+#    gh repo sync 就不再是 fast-forward，隔天同步就開始失敗。
+#    GitHub 的 schedule 只從**預設分支**觸發，所以把 automation 設成預設分支，
+#    main 就能保持 100% 乾淨。改這裡之前先想清楚這件事。
+#
+# 客製化不要放這個 repo：要改的東西放 vegeta1260-ai/social-media，
+# 或用 release tag 另外取一份。混在一起就回到「同步會蓋掉我的改動」的老問題。
+
+on:
+  schedule:
+    - cron: "0 20 * * *"   # 每天 04:00 台北時間
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 同步 main
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh repo sync ${{ github.repository }} \
+            --source Hao0321/claude-skill-social-post --branch main
+      - name: 回報目前落後幾個 commit
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api repos/Hao0321/claude-skill-social-post/compare/main...vegeta1260-ai:main \
+            -q '"status=\(.status)  behind=\(.behind_by)  ahead=\(.ahead_by)"'
